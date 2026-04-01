@@ -1,0 +1,1779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>Hotel Room Calendar</title>
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css' rel='stylesheet' />
+    <style>
+        /* styles.css - Mobile-first hotel booking calendar */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+        }
+
+        /* Light mode variables (default) */
+        :root {
+            --primary-bg: #ffffff;
+            --secondary-bg: #f8f9fa;
+            --border-color: #e9ecef;
+            --text-primary: #212529;
+            --text-secondary: #6c757d;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --modal-overlay: rgba(0,0,0,0.5);
+            --success-color: #28a745;
+            --warning-color: #ffc107;
+            --danger-color: #dc3545;
+            --info-color: #17a2b8;
+            --selected-date-bg: #e3f2fd;
+            --selected-date-border: #2196F3;
+            --hover-bg: #f1f3f5;
+            --fully-booked-overlay: rgba(220, 53, 69, 0.15);
+            --room-block-bg: #f8f9fa;
+        }
+
+        /* Dark mode variables */
+        [data-theme="dark"] {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #2d2d2d;
+            --border-color: #404040;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --shadow: 0 2px 8px rgba(0,0,0,0.3);
+            --modal-overlay: rgba(0,0,0,0.8);
+            --success-color: #2e7d32;
+            --warning-color: #b26a00;
+            --danger-color: #b71c1c;
+            --info-color: #0d47a1;
+            --selected-date-bg: #1e3a5f;
+            --selected-date-border: #64b5f6;
+            --hover-bg: #3d3d3d;
+            --fully-booked-overlay: rgba(183, 28, 28, 0.3);
+            --room-block-bg: #2d2d2d;
+        }
+
+        body {
+            background-color: var(--secondary-bg);
+            color: var(--text-primary);
+            line-height: 1.4;
+            -webkit-tap-highlight-color: transparent;
+            font-size: 14px;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        .app-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 10px;
+            min-height: 100vh;
+            position: relative;
+            padding-bottom: 70px;
+        }
+
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            width: 90%;
+            max-width: 380px;
+            pointer-events: none;
+        }
+
+        .notification {
+            background: var(--primary-bg);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 8px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: slideDown 0.3s ease;
+            border-left: 4px solid var(--success-color);
+            pointer-events: auto;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        .notification.success { border-left-color: var(--success-color); }
+        .notification.error { border-left-color: var(--danger-color); }
+        .notification.info { border-left-color: var(--info-color); }
+        .notification.warning { border-left-color: var(--warning-color); }
+
+        .notification-icon { font-size: 20px; }
+        .notification-content { flex: 1; }
+        .notification-title { font-weight: 600; font-size: 0.9rem; color: var(--text-primary); }
+        .notification-message { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+        .notification-close { background: none; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; padding: 0 4px; }
+
+        @keyframes slideDown {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-100%); opacity: 0; }
+        }
+
+        .notification.fade-out { animation: slideUp 0.3s ease forwards; }
+
+        .app-header {
+            background: var(--primary-bg);
+            padding: 12px;
+            border-radius: 14px;
+            margin-bottom: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .app-header h1 {
+            font-size: 1.3rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .theme-toggle {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 30px;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .theme-toggle:hover { background: var(--hover-bg); }
+        .theme-toggle-icon { font-size: 0.95rem; }
+
+        .storage-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 5px 8px;
+            background: var(--secondary-bg);
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+
+        .status-indicator { display: flex; align-items: center; gap: 4px; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+        .status-dot.online { background-color: var(--success-color); }
+        .status-dot.offline { background-color: var(--warning-color); }
+
+        .sync-status { display: flex; gap: 4px; }
+        .sync-btn {
+            background: var(--secondary-bg);
+            border: 1px solid var(--border-color);
+            padding: 3px 5px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+        .sync-btn:hover { background: var(--hover-bg); }
+        .sync-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .room-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: flex-start;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .dot {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .room1 { background-color: #2196F3; }
+        .room2 { background-color: #4CAF50; }
+        .room3 { background-color: #9C27B0; }
+        .room4 { background-color: #FF9800; }
+        .room5 { background-color: #E91E63; }
+        .room6 { background-color: #8B4513; }
+
+        .calendar-container {
+            background: var(--primary-bg);
+            border-radius: 14px;
+            padding: 8px;
+            box-shadow: var(--shadow);
+            margin-bottom: 12px;
+        }
+
+        .fc { font-size: 12px; }
+        .fc-toolbar-title { font-size: 1.1rem !important; font-weight: 500 !important; color: var(--text-primary) !important; }
+        .fc-button {
+            background: var(--secondary-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            padding: 4px 8px !important;
+            border-radius: 6px !important;
+            font-size: 0.8rem !important;
+            box-shadow: none !important;
+        }
+        .fc-button:hover { background: var(--hover-bg) !important; }
+
+        .fc-day-other .fc-daygrid-day-top { opacity: 0; pointer-events: none; }
+        .fc-day-other { background-color: transparent !important; cursor: default !important; pointer-events: none; visibility: hidden !important; }
+        .fc-day-other .fc-daygrid-day-frame { display: none !important; }
+
+        .fc-daygrid-day {
+            min-height: 45px !important;
+            cursor: pointer;
+            background-color: var(--primary-bg);
+            transition: background-color 0.2s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .fc-daygrid-day:hover { background-color: var(--hover-bg); }
+
+        .fc-daygrid-day.selected-date {
+            background-color: var(--selected-date-bg);
+            border: 2px solid var(--selected-date-border);
+            border-radius: 6px;
+        }
+        .fc-daygrid-day.selected-date .fc-daygrid-day-number { color: var(--selected-date-border) !important; font-weight: 600 !important; }
+
+        .fc-daygrid-day.fully-booked { position: relative; }
+        .fc-daygrid-day.fully-booked::before,
+        .fc-daygrid-day.fully-booked::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom right, transparent calc(50% - 1px), var(--danger-color) calc(50% - 0.5px), var(--danger-color) calc(50% + 0.5px), transparent calc(50% + 1px));
+            pointer-events: none;
+            z-index: 2;
+            opacity: 0.6;
+        }
+        .fc-daygrid-day.fully-booked::after {
+            background: linear-gradient(to bottom left, transparent calc(50% - 1px), var(--danger-color) calc(50% - 0.5px), var(--danger-color) calc(50% + 0.5px), transparent calc(50% + 1px));
+        }
+        .fc-daygrid-day.fully-booked .fc-daygrid-day-frame { position: relative; z-index: 3; background: transparent; }
+
+        .fc-daygrid-day-frame { padding: 2px !important; display: flex; flex-direction: column; position: relative; z-index: 3; background: transparent; }
+        .fc-daygrid-day-number { font-size: 13px !important; font-weight: 500 !important; color: var(--text-primary) !important; padding: 1px 2px !important; display: flex !important; align-items: center; gap: 2px; position: relative; z-index: 4; }
+
+        .room-dots { display: flex; flex-wrap: wrap; gap: 2px; margin-top: 1px; padding: 1px; position: relative; z-index: 4; }
+        .room-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+        .date-bookings-panel {
+            background: var(--primary-bg);
+            border-radius: 14px;
+            padding: 12px;
+            box-shadow: var(--shadow);
+            margin-top: 12px;
+            display: none;
+        }
+
+        .date-bookings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .date-bookings-header h3 { font-size: 1rem; font-weight: 500; color: var(--text-primary); }
+        .add-booking-btn { background: var(--success-color); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 500; cursor: pointer; }
+        .add-booking-btn:hover { opacity: 0.9; }
+
+        .bookings-list { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; }
+
+        .booking-item {
+            background: var(--secondary-bg);
+            padding: 10px;
+            border-radius: 10px;
+            border-left: 4px solid transparent;
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: transform 0.1s ease;
+        }
+        .booking-item:active { transform: scale(0.98); }
+        .booking-item.room1 { border-left-color: #2196F3; }
+        .booking-item.room2 { border-left-color: #4CAF50; }
+        .booking-item.room3 { border-left-color: #9C27B0; }
+        .booking-item.room4 { border-left-color: #FF9800; }
+        .booking-item.room5 { border-left-color: #E91E63; }
+        .booking-item.room6 { border-left-color: #8B4513; }
+
+        .booking-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .booking-room { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 0.9rem; }
+        .booking-details { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 6px; }
+        .booking-details span { background: var(--primary-bg); padding: 3px 6px; border-radius: 4px; }
+        .booking-notes { font-size: 0.75rem; color: var(--text-secondary); background: var(--primary-bg); padding: 6px; border-radius: 4px; margin-top: 6px; font-style: italic; border-left: 2px solid var(--border-color); }
+        .delete-booking-btn { background: none; border: none; color: var(--danger-color); font-size: 1.1rem; cursor: pointer; padding: 4px 6px; border-radius: 4px; }
+        .delete-booking-btn:hover { background: var(--hover-bg); }
+        .no-bookings-message { color: var(--text-secondary); text-align: center; padding: 15px; font-style: italic; font-size: 0.85rem; }
+
+        /* Multi-Room Modal Styles */
+        .selected-date-badge { background: var(--secondary-bg); padding: 10px; border-radius: 8px; margin-bottom: 12px; text-align: center; font-weight: 600; color: var(--selected-date-border); border: 1px solid var(--border-color); font-size: 0.9rem; }
+        .customer-name-large { font-size: 0.95rem; padding: 12px; margin-bottom: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--primary-bg); color: var(--text-primary); width: 100%; }
+        .room-blocks-container { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; max-height: 400px; overflow-y: auto; padding-right: 4px; }
+        .room-block { background: var(--room-block-bg); border-radius: 10px; padding: 12px; border-left: 4px solid transparent; position: relative; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .room-block.room1 { border-left-color: #2196F3; }
+        .room-block.room2 { border-left-color: #4CAF50; }
+        .room-block.room3 { border-left-color: #9C27B0; }
+        .room-block.room4 { border-left-color: #FF9800; }
+        .room-block.room5 { border-left-color: #E91E63; }
+        .room-block.room6 { border-left-color: #8B4513; }
+        .room-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border-color); }
+        .room-block-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.9rem; }
+        .room-block-dot { width: 14px; height: 14px; border-radius: 50%; }
+        .room-block-actions { display: flex; gap: 8px; }
+        .remove-room-btn { background: none; border: none; color: var(--danger-color); font-size: 1.2rem; cursor: pointer; padding: 0 4px; }
+        .room-block-fields { display: flex; flex-direction: column; gap: 10px; }
+        .room-row { display: flex; gap: 8px; }
+        .room-select-small { flex: 2; padding: 8px; font-size: 0.85rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--primary-bg); color: var(--text-primary); }
+        .price-group { flex: 1; display: flex; gap: 4px; }
+        .currency-small { width: 60px; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--primary-bg); color: var(--text-primary); }
+        .price-small { flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--primary-bg); color: var(--text-primary); }
+        .nights-section { background: var(--primary-bg); padding: 10px; border-radius: 6px; border: 1px solid var(--selected-date-border); margin: 5px 0; }
+        .nights-label { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; color: var(--text-primary); font-weight: 500; font-size: 0.85rem; }
+        .nights-label span { background: var(--selected-date-border); color: white; padding: 2px 6px; border-radius: 10px; font-size: 0.7rem; }
+        .nights-input-group { display: flex; align-items: center; gap: 8px; }
+        .nights-input { width: 70px; padding: 8px; border: 1px solid var(--selected-date-border); border-radius: 6px; font-size: 0.9rem; font-weight: 600; text-align: center; background: var(--primary-bg); color: var(--text-primary); }
+        .nights-hint { color: var(--text-secondary); font-size: 0.8rem; }
+        .time-row { display: flex; gap: 8px; margin-top: 5px; }
+        .time-small { flex: 1; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; background: var(--primary-bg); color: var(--text-primary); }
+        .notes-small { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.85rem; min-height: 70px; background: var(--primary-bg); color: var(--text-primary); margin-top: 5px; }
+        .blocked-room { opacity: 0.6; background: repeating-linear-gradient(45deg, var(--danger-color) 0px, var(--danger-color) 1px, transparent 1px, transparent 3px); }
+        .quick-actions { display: flex; gap: 8px; margin: 12px 0; }
+        .quick-action-btn { flex: 1; background: var(--secondary-bg); border: 1px solid var(--border-color); padding: 10px; border-radius: 6px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; font-weight: 500; }
+        .quick-action-btn:hover { background: var(--hover-bg); }
+        .summary-bar { background: var(--secondary-bg); padding: 12px; border-radius: 8px; margin: 12px 0; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); }
+        .total-rooms { font-weight: 600; color: var(--text-primary); font-size: 0.9rem; }
+        .total-price { color: var(--success-color); font-weight: 700; font-size: 0.95rem; }
+        .action-buttons { display: flex; gap: 8px; margin-top: 12px; }
+        .btn-secondary { flex: 1; background: var(--secondary-bg); border: 1px solid var(--border-color); color: var(--text-primary); padding: 14px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; }
+        .btn-success { flex: 2; background: var(--success-color); color: white; border: none; padding: 14px; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--modal-overlay);
+            z-index: 1000;
+            align-items: flex-end;
+        }
+        @media (min-width: 480px) { .modal { align-items: center; } }
+        .modal-content {
+            background: var(--primary-bg);
+            border-radius: 16px 16px 0 0;
+            padding: 16px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @media (min-width: 480px) { .modal-content { border-radius: 16px; max-width: 440px; margin: 0 auto; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); }
+        .modal-header h2 { font-size: 1.1rem; font-weight: 500; color: var(--text-primary); }
+        .close-modal { font-size: 24px; font-weight: 300; cursor: pointer; color: var(--text-secondary); padding: 0 6px; }
+        .close-modal:hover { color: var(--text-primary); }
+
+        .booking-detail { display: flex; flex-direction: column; gap: 12px; }
+        .detail-room { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--secondary-bg); border-radius: 10px; }
+        .detail-room-dot { width: 20px; height: 20px; border-radius: 50%; }
+        .detail-room-name { font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .detail-item { background: var(--secondary-bg); padding: 10px; border-radius: 8px; }
+        .detail-item.full-width { grid-column: span 2; }
+        .detail-label { font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .detail-value { font-size: 0.9rem; font-weight: 500; color: var(--text-primary); word-break: break-word; }
+        .detail-notes { background: var(--secondary-bg); padding: 12px; border-radius: 8px; grid-column: span 2; }
+        .detail-notes-label { font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 6px; text-transform: uppercase; }
+        .detail-notes-text { font-size: 0.85rem; color: var(--text-primary); line-height: 1.4; white-space: pre-wrap; }
+        .detail-actions { display: flex; gap: 10px; margin-top: 4px; grid-column: span 2; }
+        .detail-edit-btn { flex: 1; background: var(--info-color); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; }
+        .detail-delete-btn { flex: 1; background: var(--danger-color); color: white; border: none; padding: 12px; border-radius: 8px; font-size: 0.95rem; font-weight: 500; cursor: pointer; }
+
+        #bookingForm { display: flex; flex-direction: column; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+        .form-row { display: flex; gap: 8px; align-items: flex-end; }
+        label { font-size: 0.75rem; color: var(--text-secondary); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+        input, select, textarea { padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.95rem; background: var(--primary-bg); color: var(--text-primary); width: 100%; -webkit-appearance: none; }
+        textarea { min-height: 80px; resize: vertical; font-size: 0.9rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--selected-date-border); }
+        .currency-select { min-width: 70px; font-size: 0.9rem; }
+        .selected-date-display { background: var(--secondary-bg); padding: 10px; border-radius: 8px; text-align: center; font-weight: 500; color: var(--text-primary); font-size: 0.85rem; margin: 6px 0; }
+        .btn-primary { background: var(--text-primary); color: var(--primary-bg); border: none; padding: 14px; border-radius: 10px; font-size: 0.95rem; font-weight: 500; cursor: pointer; margin-top: 6px; transition: opacity 0.2s; }
+        .btn-primary:hover { opacity: 0.9; }
+
+        @media (max-width: 380px) {
+            .form-row { flex-wrap: wrap; }
+            .form-group { min-width: 100%; }
+            .currency-select { min-width: 100%; }
+            .fc-daygrid-day { min-height: 40px !important; }
+            .room-dot { width: 8px; height: 8px; }
+            .fc-daygrid-day-number { font-size: 12px !important; }
+            .detail-grid { grid-template-columns: 1fr; gap: 6px; }
+            .detail-item.full-width, .detail-notes, .detail-actions { grid-column: span 1; }
+            .detail-actions { flex-direction: column; }
+        }
+        @media (max-width: 320px) {
+            .fc-daygrid-day { min-height: 38px !important; }
+            .room-dot { width: 7px; height: 7px; }
+            .fc-daygrid-day-number { font-size: 11px !important; }
+        }
+
+        /* Tab Navigation Styles */
+        .bottom-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--primary-bg);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 8px 16px 12px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            border-top: 1px solid var(--border-color);
+            z-index: 100;
+            max-width: 600px;
+            margin: 0 auto;
+            width: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .tab-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 6px 0;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+            color: var(--text-secondary);
+        }
+        .tab-item.active { color: var(--selected-date-border); background-color: var(--selected-date-bg); }
+        .tab-icon { font-size: 22px; }
+        .tab-label { font-size: 12px; font-weight: 500; }
+        .tab-panel { display: none; }
+        .tab-panel.active-panel { display: block; }
+        .sheet-embed-container { background: var(--primary-bg); border-radius: 14px; overflow: hidden; height: calc(100vh - 170px); margin-top: 12px; box-shadow: var(--shadow); }
+        .sheet-iframe { width: 100%; height: 100%; border: none; background: #fff; }
+    </style>
+
+
+<!-- Premium Fonts & Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+
+<style>
+/* ===== HIGH-END UI V2 ===== */
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    letter-spacing: -0.2px;
+}
+
+/* Header Upgrade */
+.app-header {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+}
+
+/* Calendar Card */
+.calendar-container {
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+}
+
+/* Booking Cards */
+.booking-item {
+    border-radius: 14px;
+    border: 1px solid rgba(0,0,0,0.04);
+    background: linear-gradient(180deg,#ffffff,#fafafa);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+}
+
+/* Buttons */
+.add-booking-btn {
+    background: linear-gradient(135deg,#111,#333);
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
+/* Inputs */
+input, select, textarea {
+    border-radius: 10px;
+}
+
+/* Bottom Nav Glass */
+.bottom-tab-bar {
+    background: rgba(255,255,255,0.6);
+    backdrop-filter: blur(18px);
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.1);
+}
+
+/* Tab Item */
+.tab-item {
+    font-weight: 500;
+}
+
+.tab-item.active {
+    background: rgba(0,0,0,0.05);
+    border-radius: 10px;
+}
+
+/* Icons Upgrade */
+.tab-icon {
+    font-size: 20px;
+}
+
+/* Modal */
+.modal-content {
+    border-radius: 20px;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.2);
+}
+
+/* Room blocks */
+.room-block {
+    border-radius: 14px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+</style>
+
+
+<style>
+/* ===== DARK MODE FIXES (CRITICAL) ===== */
+[data-theme="dark"] .app-header,
+[data-theme="dark"] .calendar-container,
+[data-theme="dark"] .booking-item,
+[data-theme="dark"] .bottom-tab-bar,
+[data-theme="dark"] .modal-content {
+    background: rgba(30,30,30,0.85) !important;
+    border: 1px solid rgba(255,255,255,0.05);
+    color: #e0e0e0;
+}
+
+[data-theme="dark"] .booking-details span,
+[data-theme="dark"] .booking-notes {
+    background: rgba(255,255,255,0.05) !important;
+    color: #ccc !important;
+}
+
+[data-theme="dark"] .tab-item.active {
+    background: rgba(255,255,255,0.08);
+}
+
+/* ===== PREMIUM BUTTON SYSTEM ===== */
+button {
+    border-radius: 14px !important;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: none; /* no animation */
+}
+
+/* Primary action (Book / Add) */
+.btn-success, .add-booking-btn {
+    background: linear-gradient(135deg,#0f172a,#1e293b);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+/* Secondary buttons */
+.btn-secondary, .sync-btn {
+    background: rgba(0,0,0,0.05);
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Dark mode button fix */
+[data-theme="dark"] .btn-secondary,
+[data-theme="dark"] .sync-btn {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+}
+
+/* Input polish */
+input, select, textarea {
+    border-radius: 12px !important;
+    border: 1px solid rgba(0,0,0,0.08);
+}
+
+/* Dark mode inputs */
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: #e0e0e0;
+}
+
+/* ===== PREMIUM CARD LOOK ===== */
+.booking-item {
+    padding: 14px;
+    border-radius: 16px;
+}
+
+/* ===== HEADER TEXT VISIBILITY FIX ===== */
+[data-theme="dark"] .app-header h1,
+[data-theme="dark"] .tab-label,
+[data-theme="dark"] .legend-item {
+    color: #ffffff !important;
+}
+
+/* ===== GLASS NAV IMPROVEMENT ===== */
+.bottom-tab-bar {
+    border-radius: 18px;
+    margin-bottom: 6px;
+}
+
+/* ===== MICRO DETAILS ===== */
+.fc-toolbar-title {
+    font-weight: 600 !important;
+}
+
+/* Neon green for both Add Room and Book All Rooms buttons */
+.add-booking-btn,
+.btn-success {
+    background: #C1FF00 !important;
+    color: #000000 !important;
+}
+
+/* Dark mode - same neon green */
+[data-theme="dark"] .add-booking-btn,
+[data-theme="dark"] .btn-success {
+    background: #C1FF00 !important;
+    color: #000000 !important;
+}
+</style>
+
+</head>
+<body>
+    <div class="app-container">
+        <div id="notificationContainer" class="notification-container"></div>
+
+        <!-- Bookings Tab Panel -->
+        <div id="bookingsPanel" class="tab-panel active-panel">
+            <header class="app-header">
+                <div class="header-top">
+                    <h1>Room Bookings</h1>
+                    <button class="theme-toggle" id="themeToggle">
+                        <span class="theme-toggle-icon" id="themeIcon">☀️</span>
+                        <span id="themeText">Light</span>
+                    </button>
+                </div>
+                <div class="storage-status">
+                    <div class="status-indicator">
+                        <span class="status-dot" id="firebaseStatusDot"></span>
+                        <span id="firebaseStatusText">Firebase: Checking...</span>
+                    </div>
+                    <div class="sync-status">
+                        <button class="sync-btn" id="syncToFirebaseBtn" title="Manual sync to Firebase (auto-sync is on)">⬆️</button>
+                        <button class="sync-btn" id="syncFromFirebaseBtn" title="Manual load from Firebase (auto-load on startup)">⬇️</button>
+                        <button class="sync-btn" id="clearLocalBtn" title="Clear Local Storage"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>
+                <div class="room-legend">
+                    <span class="legend-item"><span class="dot room1"></span>R1 Double</span>
+                    <span class="legend-item"><span class="dot room2"></span>R2 Double</span>
+                    <span class="legend-item"><span class="dot room3"></span>R3 Double</span>
+                    <span class="legend-item"><span class="dot room4"></span>R4 Triple</span>
+                    <span class="legend-item"><span class="dot room5"></span>R5 Twin</span>
+                    <span class="legend-item"><span class="dot room6"></span>R6 Double</span>
+                </div>
+            </header>
+            <main class="calendar-container">
+                <div id="calendar"></div>
+            </main>
+            <div id="dateBookingsPanel" class="date-bookings-panel">
+                <div class="date-bookings-header">
+                    <h3>Bookings for <span id="selectedDateTitle"></span></h3>
+                    <button class="add-booking-btn" id="addMoreBookingBtn">+ Add Room</button>
+                </div>
+                <div id="dateBookingsList" class="bookings-list"></div>
+            </div>
+        </div>
+
+        <!-- Form Data Tab Panel -->
+        <div id="formdataPanel" class="tab-panel">
+            <div class="sheet-embed-container">
+                <iframe class="sheet-iframe" src="https://docs.google.com/spreadsheets/d/1cXBjL_r2Kbee_JtLbAq1yxjhfMNaGiXDFMgFUgPJtj8/preview?usp=sharing" title="Booking Form Data"></iframe>
+            </div>
+        </div>
+
+        <!-- All Modals -->
+        <div id="multiRoomModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="multiRoomModalTitle">Multi-Room Booking</h2>
+                    <span class="close-modal" onclick="closeMultiRoomModal()">&times;</span>
+                </div>
+                <div id="multiRoomForm">
+                    <div class="selected-date-badge" id="selectedDateBadge">Selected Date: <span id="selectedDateDisplay2"></span></div>
+                    <input type="text" id="multiCustomerName" class="customer-name-large" placeholder="Customer Name" required>
+                    <div id="roomBlocksContainer" class="room-blocks-container"></div>
+                    <div class="quick-actions">
+                        <button class="quick-action-btn" id="addRoomBlockBtn">+ Add Another Room</button>
+                        <button class="quick-action-btn" id="clearAllRoomsBtn">⟲ Clear All</button>
+                    </div>
+                    <div class="summary-bar">
+                        <span class="total-rooms" id="totalRooms">0 rooms</span>
+                        <span class="total-price" id="totalPrice">Total: 0</span>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="btn-secondary" onclick="closeMultiRoomModal()">Cancel</button>
+                        <button class="btn-success" id="confirmMultiBookingBtn">✓ Book All Rooms</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="bookingModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitle">New Booking</h2>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="roomSelect">Room</label>
+                        <select id="roomSelect" required>
+                            <option value="">Select a room</option>
+                            <option value="Room 1">Room 1 — Double</option>
+                            <option value="Room 2">Room 2 — Double</option>
+                            <option value="Room 3">Room 3 — Double</option>
+                            <option value="Room 4">Room 4 — Triple</option>
+                            <option value="Room 5">Room 5 — Twin</option>
+                            <option value="Room 6">Room 6 — Double</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="customerName">Customer Name</label>
+                        <input type="text" id="customerName" placeholder="Full name" required>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group" style="flex: 1;">
+                            <label for="currency">Currency</label>
+                            <select id="currency" class="currency-select" required>
+                                <option value="LKR" selected>LKR</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="flex: 2;">
+                            <label for="price">Price</label>
+                            <input type="number" id="price" min="0" step="0.01" placeholder="0.00" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="daysStayed">Nights</label>
+                            <input type="number" id="daysStayed" min="1" value="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="checkInTime">In</label>
+                            <input type="time" id="checkInTime" value="14:00" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="checkOutTime">Out</label>
+                            <input type="time" id="checkOutTime" value="11:00" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="notes">Notes (optional)</label>
+                        <textarea id="notes" placeholder="Special requests, additional info..."></textarea>
+                    </div>
+                    <div class="selected-date-display" id="selectedDateDisplay"></div>
+                    <button type="submit" class="btn-primary" id="submitBookingBtn">Add Booking</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="bookingDetailModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Booking Details</h2>
+                    <span class="close-modal" onclick="closeDetailModal()">&times;</span>
+                </div>
+                <div id="bookingDetailContent" class="booking-detail"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Tab Navigation Bar -->
+    <div class="bottom-tab-bar">
+        <div class="tab-item active" data-tab="bookings">
+            <span class="tab-icon"><i class="fa-solid fa-calendar-days"></i></span>
+            <span class="tab-label">Bookings</span>
+        </div>
+        <div class="tab-item" data-tab="formdata">
+            <span class="tab-icon"><i class="fa-solid fa-chart-line"></i></span>
+            <span class="tab-label">Form Data</span>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js'></script>
+    
+    <script>
+        // ===== TAB NAVIGATION (NEW ADDITION ONLY) =====
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.remove('active-panel');
+            });
+            document.getElementById(tabId + 'Panel').classList.add('active-panel');
+            document.querySelectorAll('.tab-item').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.tab-item[data-tab="${tabId}"]`).classList.add('active');
+        }
+        document.querySelectorAll('.tab-item').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabId = tab.getAttribute('data-tab');
+                switchTab(tabId);
+            });
+        });
+        
+        // ===== ALL ORIGINAL BOOKING CODE (COMPLETELY UNCHANGED) =====
+        const firebaseConfig = {
+            apiKey: "AIzaSyCifX4MIqNkqsFQ-ymveIHDTRtMlm5aPZU",
+            authDomain: "hotel-booking-dec5d.firebaseapp.com",
+            projectId: "hotel-booking-dec5d",
+            storageBucket: "hotel-booking-dec5d.firebasestorage.app",
+            messagingSenderId: "327777322310",
+            appId: "1:327777322310:web:501e81cdb0bdcf489b9147"
+        };
+
+        const ROOM_COLORS = {
+            'Room 1': 'room1',
+            'Room 2': 'room2',
+            'Room 3': 'room3',
+            'Room 4': 'room4',
+            'Room 5': 'room5',
+            'Room 6': 'room6'
+        };
+
+        const ROOM_OPTIONS = [
+            { value: 'Room 1', label: 'Room 1 — Double' },
+            { value: 'Room 2', label: 'Room 2 — Double' },
+            { value: 'Room 3', label: 'Room 3 — Double' },
+            { value: 'Room 4', label: 'Room 4 — Triple' },
+            { value: 'Room 5', label: 'Room 5 — Twin' },
+            { value: 'Room 6', label: 'Room 6 — Double' }
+        ];
+
+        const STORAGE_KEYS = {
+            BOOKINGS: 'hotel_bookings',
+            THEME: 'theme_preference'
+        };
+
+        let currentBookings = [];
+        let selectedDate = null;
+        let selectedDateStr = '';
+        let firebaseAvailable = false;
+        let db = null;
+        let editingBookingId = null;
+        let calendar = null;
+        let currentViewBooking = null;
+        let autoSyncEnabled = true;
+        let initialLoadComplete = false;
+
+        const calendarEl = document.getElementById('calendar');
+        const modal = document.getElementById('bookingModal');
+        const multiRoomModal = document.getElementById('multiRoomModal');
+        const detailModal = document.getElementById('bookingDetailModal');
+        const bookingForm = document.getElementById('bookingForm');
+        const selectedDateDisplay = document.getElementById('selectedDateDisplay');
+        const selectedDateDisplay2 = document.getElementById('selectedDateDisplay2');
+        const modalTitle = document.getElementById('modalTitle');
+        const submitBtn = document.getElementById('submitBookingBtn');
+        const closeModal = document.querySelector('.close-modal');
+        const firebaseStatusDot = document.getElementById('firebaseStatusDot');
+        const firebaseStatusText = document.getElementById('firebaseStatusText');
+        const syncToFirebaseBtn = document.getElementById('syncToFirebaseBtn');
+        const syncFromFirebaseBtn = document.getElementById('syncFromFirebaseBtn');
+        const clearLocalBtn = document.getElementById('clearLocalBtn');
+        const notificationContainer = document.getElementById('notificationContainer');
+        
+        const dateBookingsPanel = document.getElementById('dateBookingsPanel');
+        const selectedDateTitle = document.getElementById('selectedDateTitle');
+        const dateBookingsList = document.getElementById('dateBookingsList');
+        const addMoreBookingBtn = document.getElementById('addMoreBookingBtn');
+
+        const multiRoomModalTitle = document.getElementById('multiRoomModalTitle');
+        const multiCustomerName = document.getElementById('multiCustomerName');
+        const roomBlocksContainer = document.getElementById('roomBlocksContainer');
+        const addRoomBlockBtn = document.getElementById('addRoomBlockBtn');
+        const clearAllRoomsBtn = document.getElementById('clearAllRoomsBtn');
+        const totalRooms = document.getElementById('totalRooms');
+        const totalPrice = document.getElementById('totalPrice');
+        const confirmMultiBookingBtn = document.getElementById('confirmMultiBookingBtn');
+
+        const bookingDetailContent = document.getElementById('bookingDetailContent');
+
+        const themeToggle = document.getElementById('themeToggle');
+        const themeIcon = document.getElementById('themeIcon');
+        const themeText = document.getElementById('themeText');
+
+        function initTheme() {
+            const savedTheme = localStorage.getItem(STORAGE_KEYS.THEME) || 'light';
+            setTheme(savedTheme);
+        }
+
+        function setTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                themeIcon.textContent = '🌙';
+                themeText.textContent = 'Dark';
+                localStorage.setItem(STORAGE_KEYS.THEME, 'dark');
+            } else {
+                document.documentElement.removeAttribute('data-theme');
+                themeIcon.textContent = '☀️';
+                themeText.textContent = 'Light';
+                localStorage.setItem(STORAGE_KEYS.THEME, 'light');
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        function showNotification(title, message, type = 'success', duration = 3000) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            let icon = '✓';
+            if (type === 'error') icon = '✗';
+            if (type === 'warning') icon = '⚠';
+            if (type === 'info') icon = 'ℹ';
+            notification.innerHTML = `
+                <div class="notification-icon">${icon}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+            notificationContainer.appendChild(notification);
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    if (notification.parentElement) notification.remove();
+                }, 300);
+            }, duration);
+        }
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.firestore();
+            firebaseAvailable = true;
+            updateFirebaseStatus(true);
+            db.collection('bookings').limit(1).get()
+                .then(() => {
+                    console.log('Firebase connected successfully');
+                    showNotification('Firebase Connected', 'Auto-sync enabled', 'success', 2000);
+                    loadFromFirebase();
+                })
+                .catch(error => {
+                    console.warn('Firebase connection test failed:', error);
+                    firebaseAvailable = false;
+                    updateFirebaseStatus(false);
+                    showNotification('Firebase Offline', 'Working in local-only mode', 'warning', 3000);
+                    loadFromLocalStorage();
+                });
+        } catch (error) {
+            console.warn('Firebase initialization failed:', error);
+            firebaseAvailable = false;
+            updateFirebaseStatus(false);
+            showNotification('Firebase Offline', 'Working in local-only mode', 'warning', 3000);
+            loadFromLocalStorage();
+        }
+
+        function initializeCalendar() {
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: ''
+                },
+                height: 'auto',
+                contentHeight: 'auto',
+                aspectRatio: 0.8,
+                displayEventTime: false,
+                showNonCurrentDates: false,
+                fixedWeekCount: false,
+                dateClick: handleDateClick,
+                dayCellDidMount: function(info) {
+                    renderRoomDots(info);
+                    checkAndApplyFullyBooked(info);
+                },
+                datesSet: function() {
+                    setTimeout(() => {
+                        document.querySelectorAll('.fc-daygrid-day').forEach(dayCell => {
+                            const dateStr = dayCell.getAttribute('data-date');
+                            if (dateStr) {
+                                const date = new Date(dateStr + 'T12:00:00');
+                                const fakeInfo = {
+                                    el: dayCell,
+                                    date: date
+                                };
+                                renderRoomDots(fakeInfo);
+                                checkAndApplyFullyBooked(fakeInfo);
+                            }
+                        });
+                    }, 50);
+                }
+            });
+            calendar.render();
+        }
+
+        initializeCalendar();
+
+        const style = document.createElement('style');
+        style.innerHTML = `
+            .fc-day-other {
+                visibility: hidden !important;
+                display: none !important;
+            }
+            .fc-daygrid-body .fc-day-other .fc-daygrid-day-frame {
+                display: none !important;
+            }
+            .fc-scrollgrid-sync-table .fc-day-other {
+                visibility: hidden !important;
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(style);
+
+        function loadFromLocalStorage() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEYS.BOOKINGS);
+                if (saved) {
+                    currentBookings = JSON.parse(saved);
+                    console.log('Bookings loaded from local storage');
+                } else {
+                    currentBookings = [];
+                    console.log('No bookings in local storage');
+                }
+                updateCalendarWithBookings();
+                initialLoadComplete = true;
+            } catch (error) {
+                console.error('Error loading from local storage:', error);
+                currentBookings = [];
+                updateCalendarWithBookings();
+                showNotification('Error', 'Failed to load from local storage', 'error');
+            }
+        }
+
+        async function loadFromFirebase() {
+            if (!firebaseAvailable) {
+                loadFromLocalStorage();
+                return;
+            }
+            try {
+                const snapshot = await db.collection('bookings').get();
+                const firebaseBookings = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                if (firebaseBookings.length > 0) {
+                    const localBookings = [...currentBookings];
+                    const firebaseMap = new Map(firebaseBookings.map(b => [b.id, b]));
+                    const mergedBookings = [...firebaseBookings];
+                    localBookings.forEach(localBooking => {
+                        if (!firebaseMap.has(localBooking.id)) {
+                            mergedBookings.push(localBooking);
+                        }
+                    });
+                    currentBookings = mergedBookings;
+                    localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(currentBookings));
+                    console.log('Bookings loaded from Firebase and merged with local');
+                    showNotification('Firebase Sync', `Loaded ${firebaseBookings.length} bookings from cloud`, 'success', 2000);
+                } else {
+                    console.log('No bookings in Firebase, using local storage');
+                }
+                updateCalendarWithBookings();
+                initialLoadComplete = true;
+            } catch (error) {
+                console.error('Error loading from Firebase:', error);
+                showNotification('Firebase Error', 'Failed to load from cloud, using local data', 'warning', 3000);
+                loadFromLocalStorage();
+            }
+        }
+
+        async function autoSyncToFirebase() {
+            if (!firebaseAvailable || !autoSyncEnabled) return;
+            try {
+                const snapshot = await db.collection('bookings').get();
+                const batch = db.batch();
+                snapshot.docs.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                await batch.commit();
+                for (const booking of currentBookings) {
+                    const { id, ...bookingData } = booking;
+                    await db.collection('bookings').add({
+                        ...bookingData,
+                        syncedAt: new Date().toISOString()
+                    });
+                }
+                console.log('Auto-sync to Firebase complete');
+                showNotification('Synced', 'Data saved to cloud', 'success', 1500);
+            } catch (error) {
+                console.error('Auto-sync failed:', error);
+                showNotification('Sync Failed', 'Changes saved locally but not to cloud', 'warning', 3000);
+            }
+        }
+
+        bookingForm.addEventListener('submit', handleBookingSubmit);
+        closeModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+            editingBookingId = null;
+            removeSelectedDateHighlight();
+        });
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.style.display = 'none';
+                editingBookingId = null;
+                removeSelectedDateHighlight();
+            }
+            if (e.target === detailModal) detailModal.style.display = 'none';
+            if (e.target === multiRoomModal) closeMultiRoomModal();
+        });
+        addMoreBookingBtn.addEventListener('click', () => openMultiRoomModal(selectedDateStr));
+        addRoomBlockBtn.addEventListener('click', addRoomBlock);
+        clearAllRoomsBtn.addEventListener('click', clearAllRooms);
+        confirmMultiBookingBtn.addEventListener('click', confirmMultiBookings);
+        syncToFirebaseBtn.addEventListener('click', async () => {
+            syncToFirebaseBtn.textContent = '⏳';
+            await autoSyncToFirebase();
+            syncToFirebaseBtn.textContent = '⬆️';
+            showNotification('Manual Sync', 'Data synced to Firebase', 'success');
+        });
+        syncFromFirebaseBtn.addEventListener('click', async () => {
+            syncFromFirebaseBtn.textContent = '⏳';
+            await loadFromFirebase();
+            syncFromFirebaseBtn.textContent = '⬇️';
+        });
+        clearLocalBtn.addEventListener('click', clearLocalStorage);
+
+        function highlightSelectedDate(dateStr) {
+            removeSelectedDateHighlight();
+            const dayCell = document.querySelector(`.fc-daygrid-day[data-date="${dateStr}"]`);
+            if (dayCell) dayCell.classList.add('selected-date');
+        }
+
+        function removeSelectedDateHighlight() {
+            document.querySelectorAll('.fc-daygrid-day.selected-date').forEach(cell => {
+                cell.classList.remove('selected-date');
+            });
+        }
+
+        function checkAndApplyFullyBooked(info) {
+            const dayEl = info.el;
+            const dateStr = formatDate(info.date);
+            const bookedRooms = getBookedRoomsForDate(dateStr);
+            if (bookedRooms.length === 6) {
+                dayEl.classList.add('fully-booked');
+            } else {
+                dayEl.classList.remove('fully-booked');
+            }
+        }
+
+        function openMultiRoomModal(dateStr) {
+            selectedDateStr = dateStr;
+            selectedDateDisplay2.textContent = dateStr;
+            multiCustomerName.value = '';
+            roomBlocksContainer.innerHTML = '';
+            addRoomBlock();
+            multiRoomModal.style.display = 'flex';
+        }
+
+        function addRoomBlock() {
+            const blockId = 'room_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            const blockHtml = createRoomBlockHtml(blockId);
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = blockHtml;
+            const blockElement = tempDiv.firstElementChild;
+            roomBlocksContainer.appendChild(blockElement);
+            setupRoomBlockListeners(blockElement);
+            updateTotalSummary();
+        }
+
+        function createRoomBlockHtml(blockId) {
+            const roomOptions = ROOM_OPTIONS.map(opt => 
+                `<option value="${opt.value}">${opt.label}</option>`
+            ).join('');
+            return `
+                <div class="room-block" id="${blockId}" data-room="">
+                    <div class="room-block-header">
+                        <div class="room-block-title">
+                            <span class="room-block-dot"></span>
+                            <span>New Room</span>
+                        </div>
+                        <div class="room-block-actions">
+                            <button class="remove-room-btn" onclick="removeRoomBlock('${blockId}')"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </div>
+                    <div class="room-block-fields">
+                        <div class="room-row">
+                            <select class="room-select-small" onchange="updateRoomBlockColor('${blockId}', this.value)">
+                                <option value="">Select room</option>
+                                ${roomOptions}
+                            </select>
+                        </div>
+                        <div class="room-row">
+                            <div class="price-group">
+                                <select class="currency-small" id="currency_${blockId}">
+                                    <option value="LKR">LKR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="EUR">EUR</option>
+                                </select>
+                                <input type="number" class="price-small" id="price_${blockId}" placeholder="Price" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="nights-section">
+                            <div class="nights-label">
+                                <span>🌙</span> Nights
+                                <span>required</span>
+                            </div>
+                            <div class="nights-input-group">
+                                <input type="number" class="nights-input" id="nights_${blockId}" value="1" min="1" placeholder="Nights">
+                                <span class="nights-hint">× ${selectedDateStr}</span>
+                            </div>
+                        </div>
+                        <div class="time-row">
+                            <input type="time" class="time-small" id="checkin_${blockId}" value="14:00">
+                            <input type="time" class="time-small" id="checkout_${blockId}" value="11:00">
+                        </div>
+                        <textarea class="notes-small" id="notes_${blockId}" placeholder="Notes (optional)"></textarea>
+                    </div>
+                </div>
+            `;
+        }
+
+        function setupRoomBlockListeners(block) {
+            const inputs = block.querySelectorAll('input, select');
+            inputs.forEach(el => {
+                el.addEventListener('change', updateTotalSummary);
+                el.addEventListener('input', updateTotalSummary);
+            });
+        }
+
+        window.updateRoomBlockColor = function(blockId, roomValue) {
+            const block = document.getElementById(blockId);
+            if (!block) return;
+            block.classList.remove('room1', 'room2', 'room3', 'room4', 'room5', 'room6');
+            if (roomValue) {
+                const colorClass = ROOM_COLORS[roomValue];
+                block.classList.add(colorClass);
+                const dot = block.querySelector('.room-block-dot');
+                dot.className = `room-block-dot ${colorClass}`;
+                const titleSpan = block.querySelector('.room-block-title span:last-child');
+                titleSpan.textContent = roomValue;
+                block.dataset.room = roomValue;
+            }
+            checkRoomAvailability(block, roomValue);
+            updateTotalSummary();
+        };
+
+        function checkRoomAvailability(block, roomValue) {
+            if (!roomValue || !selectedDateStr) return;
+            const nights = block.querySelector('.nights-input').value;
+            const affectedDates = getAffectedDates(selectedDateStr, parseInt(nights) || 1);
+            for (const date of affectedDates) {
+                const bookedRooms = getBookedRoomsForDate(date);
+                if (bookedRooms.includes(roomValue)) {
+                    block.classList.add('blocked-room');
+                    showNotification('Room Unavailable', `${roomValue} is booked on ${date}`, 'warning', 2000);
+                    return;
+                }
+            }
+            block.classList.remove('blocked-room');
+        }
+
+        window.removeRoomBlock = function(blockId) {
+            const block = document.getElementById(blockId);
+            if (block) {
+                block.remove();
+                updateTotalSummary();
+            }
+        };
+
+        function clearAllRooms() {
+            if (confirm('Clear all rooms?')) {
+                roomBlocksContainer.innerHTML = '';
+                addRoomBlock();
+                updateTotalSummary();
+            }
+        }
+
+        function updateTotalSummary() {
+            const blocks = roomBlocksContainer.children;
+            const roomCount = blocks.length;
+            let total = 0;
+            for (let i = 0; i < blocks.length; i++) {
+                const priceInput = blocks[i].querySelector('.price-small');
+                if (priceInput && priceInput.value) {
+                    total += parseFloat(priceInput.value) || 0;
+                }
+            }
+            totalRooms.textContent = `${roomCount} room${roomCount !== 1 ? 's' : ''}`;
+            totalPrice.textContent = `Total: ${total.toFixed(2)}`;
+        }
+
+        function validateRoomBlocks() {
+            const blocks = roomBlocksContainer.children;
+            if (blocks.length === 0) {
+                showNotification('Error', 'Add at least one room', 'error');
+                return false;
+            }
+            if (!multiCustomerName.value.trim()) {
+                showNotification('Error', 'Enter customer name', 'error');
+                multiCustomerName.focus();
+                return false;
+            }
+            const selectedRooms = new Set();
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
+                const roomSelect = block.querySelector('.room-select-small');
+                const price = block.querySelector('.price-small');
+                const nights = block.querySelector('.nights-input');
+                if (!roomSelect.value) {
+                    showNotification('Error', `Room ${i + 1}: Select a room`, 'error');
+                    return false;
+                }
+                if (selectedRooms.has(roomSelect.value)) {
+                    showNotification('Error', `Room ${roomSelect.value} selected twice`, 'error');
+                    return false;
+                }
+                selectedRooms.add(roomSelect.value);
+                if (!price.value || parseFloat(price.value) <= 0) {
+                    showNotification('Error', `Room ${i + 1}: Enter valid price`, 'error');
+                    return false;
+                }
+                if (!nights.value || parseInt(nights.value) < 1) {
+                    showNotification('Error', `Room ${i + 1}: Enter valid number of nights`, 'error');
+                    return false;
+                }
+                const affectedDates = getAffectedDates(selectedDateStr, parseInt(nights.value));
+                for (const date of affectedDates) {
+                    const bookedRooms = getBookedRoomsForDate(date);
+                    if (bookedRooms.includes(roomSelect.value)) {
+                        showNotification('Error', `${roomSelect.value} is already booked on ${date}`, 'error');
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        async function confirmMultiBookings() {
+            if (!validateRoomBlocks()) return;
+            const customerName = multiCustomerName.value.trim();
+            const blocks = roomBlocksContainer.children;
+            const newBookings = [];
+            for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
+                const room = block.querySelector('.room-select-small').value;
+                const currency = block.querySelector('.currency-small').value;
+                const price = parseFloat(block.querySelector('.price-small').value);
+                const nights = parseInt(block.querySelector('.nights-input').value);
+                const checkInTime = block.querySelector('[id^="checkin_"]').value;
+                const checkOutTime = block.querySelector('[id^="checkout_"]').value;
+                const notes = block.querySelector('textarea').value;
+                const newBooking = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5) + '_' + i,
+                    room: room,
+                    customerName: customerName,
+                    currency: currency,
+                    price: price,
+                    daysStayed: nights,
+                    checkInTime: checkInTime,
+                    checkOutTime: checkOutTime,
+                    notes: notes,
+                    startDate: selectedDateStr,
+                    createdAt: new Date().toISOString()
+                };
+                newBookings.push(newBooking);
+            }
+            currentBookings.push(...newBookings);
+            saveToLocalStorage();
+            await autoSyncToFirebase();
+            updateCalendarWithBookings();
+            showNotification('Success', `${newBookings.length} rooms booked for ${customerName}`, 'success');
+            closeMultiRoomModal();
+            showBookingsForDate(selectedDateStr);
+        }
+
+        function closeMultiRoomModal() {
+            multiRoomModal.style.display = 'none';
+        }
+
+        function showBookingDetail(bookingId) {
+            const booking = currentBookings.find(b => b.id === bookingId);
+            if (!booking) return;
+            currentViewBooking = booking;
+            const currency = booking.currency || 'LKR';
+            const roomColor = ROOM_COLORS[booking.room];
+            const detailHtml = `
+                <div class="detail-room">
+                    <span class="detail-room-dot ${roomColor}"></span>
+                    <span class="detail-room-name">${booking.room}</span>
+                </div>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Customer</div>
+                        <div class="detail-value">${booking.customerName}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Price</div>
+                        <div class="detail-value">${currency} ${booking.price}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Check In</div>
+                        <div class="detail-value">${booking.checkInTime}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Check Out</div>
+                        <div class="detail-value">${booking.checkOutTime}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Nights</div>
+                        <div class="detail-value">${booking.daysStayed}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Start Date</div>
+                        <div class="detail-value">${booking.startDate}</div>
+                    </div>
+                </div>
+                ${booking.notes ? `
+                    <div class="detail-notes">
+                        <div class="detail-notes-label">Notes</div>
+                        <div class="detail-notes-text">${booking.notes}</div>
+                    </div>
+                ` : ''}
+                <div class="detail-actions">
+                    <button class="detail-edit-btn" onclick="editFromDetail('${booking.id}')">Edit</button>
+                    <button class="detail-delete-btn" onclick="deleteFromDetail('${booking.id}')">Delete</button>
+                </div>
+            `;
+            bookingDetailContent.innerHTML = detailHtml;
+            detailModal.style.display = 'flex';
+        }
+
+        window.editFromDetail = function(bookingId) {
+            detailModal.style.display = 'none';
+            openBookingModalForDate(selectedDateStr, bookingId);
+        };
+
+        window.deleteFromDetail = function(bookingId) {
+            if (confirm('Delete this booking?')) {
+                const booking = currentBookings.find(b => b.id === bookingId);
+                currentBookings = currentBookings.filter(b => b.id !== bookingId);
+                saveToLocalStorage();
+                autoSyncToFirebase();
+                updateCalendarWithBookings();
+                if (selectedDateStr) showBookingsForDate(selectedDateStr);
+                detailModal.style.display = 'none';
+                showNotification('Booking Deleted', `${booking.room} - ${booking.customerName} has been removed`, 'warning');
+            }
+        };
+
+        window.closeDetailModal = function() {
+            detailModal.style.display = 'none';
+        };
+
+        function saveToLocalStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEYS.BOOKINGS, JSON.stringify(currentBookings));
+                console.log('Bookings saved to local storage');
+                return true;
+            } catch (error) {
+                console.error('Error saving to local storage:', error);
+                showNotification('Storage Error', 'Failed to save to local storage', 'error');
+                return false;
+            }
+        }
+
+        function clearLocalStorage() {
+            if (confirm('Clear all local bookings? This cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEYS.BOOKINGS);
+                currentBookings = [];
+                updateCalendarWithBookings();
+                dateBookingsPanel.style.display = 'none';
+                removeSelectedDateHighlight();
+                showNotification('Storage Cleared', 'All local bookings have been removed', 'warning');
+                autoSyncToFirebase();
+            }
+        }
+
+        function updateFirebaseStatus(available) {
+            firebaseAvailable = available;
+            if (available) {
+                firebaseStatusDot.className = 'status-dot online';
+                firebaseStatusText.textContent = 'Firebase: Connected (auto-sync)';
+                syncToFirebaseBtn.disabled = false;
+                syncFromFirebaseBtn.disabled = false;
+            } else {
+                firebaseStatusDot.className = 'status-dot offline';
+                firebaseStatusText.textContent = 'Firebase: Offline (local only)';
+                syncToFirebaseBtn.disabled = true;
+                syncFromFirebaseBtn.disabled = true;
+            }
+        }
+
+        function handleDateClick(info) {
+            selectedDate = info.date;
+            selectedDateStr = formatDate(selectedDate);
+            highlightSelectedDate(selectedDateStr);
+            showBookingsForDate(selectedDateStr);
+        }
+
+        function showBookingsForDate(dateStr) {
+            selectedDateStr = dateStr;
+            selectedDateTitle.textContent = dateStr;
+            const dateBookings = currentBookings.filter(booking => {
+                const affectedDates = getAffectedDates(booking.startDate, booking.daysStayed);
+                return affectedDates.includes(dateStr);
+            });
+            if (dateBookings.length > 0) {
+                let html = '';
+                dateBookings.forEach(booking => {
+                    const currency = booking.currency || 'LKR';
+                    html += `
+                        <div class="booking-item ${ROOM_COLORS[booking.room]}" onclick="showBookingDetail('${booking.id}')">
+                            <div class="booking-header">
+                                <div class="booking-room">
+                                    <span class="room-dot ${ROOM_COLORS[booking.room]}"></span>
+                                    <span>${booking.room}</span>
+                                </div>
+                                <button class="delete-booking-btn" onclick="event.stopPropagation(); deleteBooking('${booking.id}')" title="Delete booking"><i class="fa-solid fa-trash"></i></button>
+                            </div>
+                            <div class="booking-details">
+                                <span><strong>${booking.customerName}</strong></span>
+                                <span>${currency} ${booking.price}</span>
+                                <span>${booking.checkInTime}-${booking.checkOutTime}</span>
+                                <span>${booking.daysStayed}n</span>
+                            </div>
+                            ${booking.notes ? `<div class="booking-notes">📝 ${booking.notes.substring(0, 30)}${booking.notes.length > 30 ? '...' : ''}</div>` : ''}
+                        </div>
+                    `;
+                });
+                dateBookingsList.innerHTML = html;
+            } else {
+                dateBookingsList.innerHTML = '<div class="no-bookings-message">No bookings for this date. Click "+ Add Room" to add one.</div>';
+            }
+            dateBookingsPanel.style.display = 'block';
+        }
+
+        function openBookingModalForDate(dateStr, bookingId = null) {
+            selectedDateStr = dateStr;
+            selectedDateDisplay.textContent = `Selected: ${dateStr}`;
+            if (bookingId) {
+                const booking = currentBookings.find(b => b.id === bookingId);
+                if (booking) {
+                    modalTitle.textContent = 'Edit Booking';
+                    submitBtn.textContent = 'Update Booking';
+                    document.getElementById('roomSelect').value = booking.room;
+                    document.getElementById('customerName').value = booking.customerName;
+                    document.getElementById('currency').value = booking.currency || 'LKR';
+                    document.getElementById('price').value = booking.price;
+                    document.getElementById('daysStayed').value = booking.daysStayed;
+                    document.getElementById('checkInTime').value = booking.checkInTime;
+                    document.getElementById('checkOutTime').value = booking.checkOutTime;
+                    document.getElementById('notes').value = booking.notes || '';
+                    editingBookingId = bookingId;
+                }
+            } else {
+                modalTitle.textContent = 'New Booking';
+                submitBtn.textContent = 'Add Booking';
+                bookingForm.reset();
+                document.getElementById('currency').value = 'LKR';
+                document.getElementById('daysStayed').value = '1';
+                document.getElementById('checkInTime').value = '14:00';
+                document.getElementById('checkOutTime').value = '11:00';
+                editingBookingId = null;
+            }
+            modal.style.display = 'flex';
+        }
+
+        window.deleteBooking = function(bookingId) {
+            if (confirm('Delete this booking?')) {
+                const booking = currentBookings.find(b => b.id === bookingId);
+                currentBookings = currentBookings.filter(b => b.id !== bookingId);
+                saveToLocalStorage();
+                autoSyncToFirebase();
+                updateCalendarWithBookings();
+                if (selectedDateStr) showBookingsForDate(selectedDateStr);
+                showNotification('Booking Deleted', `${booking.room} - ${booking.customerName} has been removed`, 'warning');
+            }
+        };
+
+        async function handleBookingSubmit(e) {
+            e.preventDefault();
+            const bookingData = {
+                room: document.getElementById('roomSelect').value,
+                customerName: document.getElementById('customerName').value,
+                currency: document.getElementById('currency').value,
+                price: parseFloat(document.getElementById('price').value),
+                daysStayed: parseInt(document.getElementById('daysStayed').value),
+                checkInTime: document.getElementById('checkInTime').value,
+                checkOutTime: document.getElementById('checkOutTime').value,
+                notes: document.getElementById('notes').value,
+                startDate: selectedDateStr,
+                createdAt: new Date().toISOString()
+            };
+            if (!bookingData.room || !bookingData.customerName || !bookingData.price) {
+                showNotification('Validation Error', 'Please fill in all required fields', 'error');
+                return;
+            }
+            if (!editingBookingId) {
+                const affectedDates = getAffectedDates(bookingData.startDate, bookingData.daysStayed);
+                for (const date of affectedDates) {
+                    const bookedRooms = getBookedRoomsForDate(date);
+                    if (bookedRooms.includes(bookingData.room)) {
+                        showNotification('Booking Failed', `Room ${bookingData.room} is already booked on ${date}`, 'error');
+                        return;
+                    }
+                }
+            }
+            if (editingBookingId) {
+                const index = currentBookings.findIndex(b => b.id === editingBookingId);
+                if (index !== -1) {
+                    currentBookings[index] = { ...currentBookings[index], ...bookingData };
+                    showNotification('Booking Updated', `${bookingData.room} - ${bookingData.customerName} has been updated`, 'success');
+                }
+            } else {
+                const newBooking = {
+                    id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+                    ...bookingData
+                };
+                currentBookings.push(newBooking);
+                showNotification('Booking Added', `${bookingData.room} - ${bookingData.customerName} for ${bookingData.daysStayed} night(s)`, 'success');
+            }
+            saveToLocalStorage();
+            await autoSyncToFirebase();
+            updateCalendarWithBookings();
+            if (selectedDateStr) showBookingsForDate(selectedDateStr);
+            modal.style.display = 'none';
+            editingBookingId = null;
+            bookingForm.reset();
+            document.getElementById('currency').value = 'LKR';
+            document.getElementById('daysStayed').value = '1';
+        }
+
+        function updateCalendarWithBookings() {
+            if (calendar) {
+                document.querySelectorAll('.room-dots, .fully-booked-indicator').forEach(el => el.remove());
+                calendar.refetchEvents();
+                calendar.render();
+                setTimeout(() => {
+                    document.querySelectorAll('.fc-daygrid-day').forEach(dayCell => {
+                        const dateStr = dayCell.getAttribute('data-date');
+                        if (dateStr) {
+                            const date = new Date(dateStr + 'T12:00:00');
+                            const fakeInfo = {
+                                el: dayCell,
+                                date: date
+                            };
+                            renderRoomDots(fakeInfo);
+                            checkAndApplyFullyBooked(fakeInfo);
+                        }
+                    });
+                    if (selectedDateStr) highlightSelectedDate(selectedDateStr);
+                }, 50);
+            }
+        }
+
+        function renderRoomDots(info) {
+            const dayEl = info.el;
+            const dateStr = formatDate(info.date);
+            const existingDots = dayEl.querySelector('.room-dots');
+            if (existingDots) existingDots.remove();
+            const bookedRooms = getBookedRoomsForDate(dateStr);
+            if (bookedRooms.length > 0) {
+                const dotsContainer = document.createElement('div');
+                dotsContainer.className = 'room-dots';
+                bookedRooms.forEach(room => {
+                    const dot = document.createElement('span');
+                    dot.className = `room-dot ${ROOM_COLORS[room]}`;
+                    dot.title = room;
+                    dotsContainer.appendChild(dot);
+                });
+                const frame = dayEl.querySelector('.fc-daygrid-day-frame');
+                if (frame) frame.appendChild(dotsContainer);
+            }
+        }
+
+        function getBookedRoomsForDate(dateStr) {
+            const bookedRooms = new Set();
+            currentBookings.forEach(booking => {
+                const affectedDates = getAffectedDates(booking.startDate, booking.daysStayed);
+                if (affectedDates.includes(dateStr)) bookedRooms.add(booking.room);
+            });
+            return Array.from(bookedRooms).sort();
+        }
+
+        function getAffectedDates(startDateStr, daysStayed) {
+            const dates = [];
+            const startDate = new Date(startDateStr + 'T12:00:00');
+            for (let i = 0; i < daysStayed; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                dates.push(formatDate(date));
+            }
+            return dates;
+        }
+
+        function formatDate(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        window.removeRoomBlock = removeRoomBlock;
+        window.updateRoomBlockColor = updateRoomBlockColor;
+        window.closeMultiRoomModal = closeMultiRoomModal;
+        window.closeDetailModal = closeDetailModal;
+        window.deleteBooking = deleteBooking;
+        window.editFromDetail = editFromDetail;
+        window.deleteFromDetail = deleteFromDetail;
+        window.showBookingDetail = showBookingDetail;
+
+        initTheme();
+    </script>
+</body>
+</html>
